@@ -1,0 +1,40 @@
+providers:
+- name: Kimi
+  api_base: https://api.moonshot.cn/v1
+  models:
+  - moonshot-v1-8k
+- name: 智谱
+  api_base: https://open.bigmodel.cn/api/paas/v4
+  models:
+  - glm-4-plus
+- name: DeepSeek
+  api_base: https://api.deepseek.com/v1
+  models:
+  - deepseek-chat
+- name: MiniMax
+  api_base: https://api.minimax.chat/v1
+  models:
+  - MiniMax-Text-01
+- name: OpenAI
+  api_base: https://api.openai.com/v1
+  models:
+  - gpt-4.1-mini
+  - gpt-4.1
+  - gpt-4o
+- name: DashScope
+  api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+  models:
+  - qwen-plus
+- name: SiliconFlow
+  api_base: https://api.siliconflow.cn/v1
+  models:
+  - Qwen/Qwen2.5-72B-Instruct
+- name: SupXH Gemini
+  api_base: https://api.supxh.xin/v1
+  models:
+  - 流式抗截断/gemini-3-pro-preview-maxthinking
+  - gemini-3-pro-preview-maxthinking
+- name: vcrppsmofoyv
+  api_base: https://vcrppsmofoyv.cloud.sealos.io/v1
+  models:
+  - glm-5

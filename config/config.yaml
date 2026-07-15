@@ -1,0 +1,373 @@
+# ═══════════════════════════════════════════════════════════════
+#                    AYX Growth Intel 配置文件
+#                      Version: 0.1.0
+# ═══════════════════════════════════════════════════════════════
+
+
+# 产品定位：大消费品牌竞品舆情与增长机会雷达
+
+
+# ===============================================================
+# 1. 基础设置
+# ===============================================================
+app:
+  # 时区配置
+  timezone: "Asia/Shanghai"
+  show_version_update: false          # 新分支默认关闭原项目版本提示
+
+
+# ===============================================================
+# 1.5 调度系统
+# ===============================================================
+schedule:
+  enabled: true                         # 是否启用调度系统
+  preset: "custom"             # 预设模板名称
+
+
+# ===============================================================
+# 2. 数据源 - 热榜平台
+# ===============================================================
+platforms:
+  enabled: true                         # 是否启用热榜平台抓取
+  sources:
+    - id: "toutiao"
+      name: "今日头条"
+      tags: ["其他"]
+    - id: "baidu"
+      name: "百度热搜"
+      tags: ["其他"]
+    - id: "wallstreetcn-hot"
+      name: "华尔街见闻"
+      tags: ["财经"]
+    - id: "thepaper"
+      name: "澎湃新闻"
+      tags: ["其他"]
+    - id: "bilibili-hot-search"
+      name: "bilibili 热搜"
+      tags: ["文旅"]
+    - id: "cls-hot"
+      name: "财联社热门"
+      tags: ["财经"]
+    - id: "ifeng"
+      name: "凤凰网"
+      tags: ["其他"]
+    - id: "tieba"
+      name: "贴吧"
+      tags: ["其他"]
+    - id: "weibo"
+      name: "微博"
+      tags: ["其他"]
+    - id: "douyin"
+      name: "抖音"
+      tags: ["文旅"]
+    - id: "zhihu"
+      name: "知乎"
+      tags: ["其他"]
+
+
+
+# ===============================================================
+# 3. 数据源 - RSS 订阅
+# ===============================================================
+rss:
+  enabled: true                       # 是否启用 RSS 抓取
+  default_max_items: 50               # 每个 RSS 源默认至少抓取 50 条
+  freshness_filter:
+    enabled: true                     # 是否启用新鲜度过滤
+    max_age_days: 5                   # 最大文章年龄（天）
+
+  feeds:
+    - id: "hacker-news"
+      name: "Hacker News"
+      url: "https://hnrss.org/frontpage"
+      tags: ["科技"]
+
+    - id: "Hacker News Launches"
+      name: "Hacker News Launches"
+      url: "https://hnrss.org/launches"
+      tags: ["科技"]
+
+    - id: "baiduhot"
+      name: "百度实时热点"
+      url: "https://rsshub.rssforever.com/baidu/top/realtime"
+      tags: ["其他"]
+
+    - id: "ftchinese"
+      name: "FT中文网 - 今日焦点"
+      url: "http://www.ftchinese.com/rss/news"
+      tags: ["财经", "国际"]
+
+    - id: "36kr"
+      name: "36氪"
+      url: "https://36kr.com/feed-newsflash"
+      tags: ["财经"]
+      max_age_days: 3
+
+    - id: "huxiu"
+      name: "虎嗅"
+      url: "https://rss.huxiu.com/"
+      tags: ["科技"]
+      max_age_days: 5
+
+    - id: "gzh"
+      name: "小绿文"
+      url: "https://rsshub.rssforever.com/tophub/WnBe01o371"
+      tags: ["热榜"]
+      max_age_days: 5
+
+    - id: "eocnomist"
+      name: "经济学人最新报道"
+      url: "https://economistnew.buzzing.cc/feed.xml"
+      tags: ["财经"]
+
+    - id: "crazycapital"
+      name: "疯投圈"
+      url: "https://crazy.capital/feed"
+      tags: ["财经"]
+      max_age_days: 5
+
+    - id: "shbendibao"
+      name: "上海本地宝焦点资讯"
+      url: "https://rsshub.rssforever.com/bendibao/news/sh"
+      tags: ["地区"]
+      max_age_days: 5
+
+    - id: "chinaventurenews116"
+      name: "投中网 新消费"
+      url: "https://rsshub.app/chinaventure/news/116"
+      tags: ["财经"]
+      max_age_days: 10
+
+    - id: "36krrenqi"
+      name: "36KR人气"
+      url: "https://rsshub.rssforever.com/36kr/hot-list/renqi"
+      tags: ["热榜"]
+      max_age_days: 10
+
+    - id: "36krlife"
+      name: "36KR生活"
+      url: "https://www.aiyxdatatest.cn/rsshub/36kr/information/happy_life"
+      tags: ["热榜"]
+      max_age_days: 10
+
+    - id: "caixinlatest"
+      name: "财新最新文章"
+      url: "https://rsshub.rssforever.com/caixin/latest"
+      tags: ["财经"]
+      max_age_days: 10
+
+    - id: "36krcontact"
+      name: "36KR创投"
+      url: "https://www.aiyxdatatest.cn/rsshub/36kr/information/contact"
+      tags: ["财经"]
+
+    - id: "36krccs"
+      name: "36kr财经"
+      url: "https://www.aiyxdatatest.cn/rsshub/36kr/information/ccs"
+      tags: ["财经"]
+      max_age_days: 5
+
+    - id: "cbndata2362"
+      name: "cbndata食品饮料"
+      url: "https://www.aiyxdatatest.cn/rsshub/cbndata/information/2362?limit=50"
+      tags: ["热榜"]
+
+    - id: "hongcan"
+      name: "红餐网"
+      url: "https://www.aiyxdatatest.cn/rsshub/toutiao/user/token/CiZNLHx7bnpA1ymflvltxwD2kmKqZqiKwEI1jDb3Zl5jR5Bfbv4zXBpJCjwAAAAAAAAAAAAAUJFQhf5bsq_HHkupyZ8TX-Cy645IYF_G6RSfWnfqk29tC46lbIXacUb08YclwRnPPD4Q-uCUDhjDxYPqBCIBA5feaMU%3D/enhanced"
+      tags: ["财经"]
+      max_age_days: 30
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===============================================================
+# 4. 报告模式
+# ===============================================================
+report:
+  mode: "incremental"                     # 可选: daily | current | incremental
+  display_mode: "keyword"             # 分组维度: keyword | platform
+  sort_by_position_first: false
+  rank_threshold: 5                   # 排名高亮阈值
+  max_news_per_keyword: 0             # 每个关键词最大显示数量
+
+
+# ===============================================================
+# 5. 推送内容控制
+# ===============================================================
+display:
+  region_order:
+    - new_items
+    - hotlist
+    - rss
+    - standalone
+    - ai_analysis
+  regions:
+    new_items: true
+    hotlist: true
+    rss: true
+    standalone: true
+    ai_analysis: true
+  standalone:
+    platforms: ["zhihu","wallstreetcn-hot","toutiao","baidu","thepaper","cls-hot","weibo","ifeng","douyin"]
+    rss_feeds: ["ruanyifeng","36KR","Hacker News Launches","baiduhot","ftchinese","hacker-news","36kr","huxiu","timednews","gzh","eocnomist","crazycapital","shbendibao","chinaventurenews116","36krrenqi","36krlife","caixinlatest","36krcontact","36krccs","cbndata2362","hongcan"]
+    max_items: 20
+
+
+# ===============================================================
+# 6. 推送通知
+# ===============================================================
+notification:
+  enabled: true                       # 是否启用通知功能
+  channels:
+    feishu:
+      webhook_url: ""
+    dingtalk:
+      webhook_url: ""
+    wework:
+      webhook_url: ""
+      msg_type: "markdown"
+    telegram:
+      bot_token: ""
+      chat_id: ""
+    email:
+      from: ""
+      password: ""
+      to: ""
+    ntfy:
+      server_url: "https://ntfy.sh"
+      topic: ""
+      token: ""
+    bark:
+      url: ""
+    slack:
+      webhook_url: ""
+    generic_webhook:
+      webhook_url: ""
+
+
+# ===============================================================
+# 7. 存储配置
+# ===============================================================
+storage:
+  backend: "auto"
+  formats:
+    sqlite: true
+    html: true
+  local:
+    data_dir: "output"
+    retention_days: 0
+  remote:
+    retention_days: 0
+    endpoint_url: ""
+    bucket_name: ""
+    access_key_id: ""
+    secret_access_key: ""
+    region: ""
+  pull:
+    enabled: false
+    days: 7
+
+
+# ===============================================================
+# 8. AI 模型配置
+# ===============================================================
+ai:
+  model: "流式抗截断/gemini-3-pro-preview-maxthinking"
+  api_base: "https://api.supxh.xin/v1"
+  api_key: ""  # 通过 AI_API_KEY 环境变量注入，禁止在配置文件中保存明文密钥
+  timeout: 600
+  temperature: 1
+  max_tokens: 10000
+  num_retries: 1
+  fallback_models: []
+  extra_params:
+    response_format:
+      type: "json_object"
+
+
+# ===============================================================
+# 9. AI 分析功能
+# ===============================================================
+ai_analysis:
+  enabled: true
+  language: "Chinese"
+  prompt_file: "ai_analysis_prompt.txt"
+  mode: "follow_report"
+  max_news_for_analysis: 150
+  include_rss: true
+  include_standalone: true
+  include_rank_timeline: true
+
+
+# ===============================================================
+# 10. AI 翻译功能
+# ===============================================================
+ai_translation:
+  enabled: false
+  language: "中文"
+  prompt_file: "ai_translation_prompt.txt"
+
+
+# ===============================================================
+# 11. 高级设置
+# ===============================================================
+advanced:
+  debug: false
+  version_check_url: ""
+  mcp_version_check_url: ""
+  configs_version_check_url: ""
+  crawler:
+    request_interval: 2200
+  rss:
+    request_interval: 1000
+    timeout: 15
+  weight:
+    rank: 0.5
+    frequency: 0.3
+    hotness: 0.2
+  max_accounts_per_channel: 3
+  batch_size:
+    default: 4000
+    dingtalk: 20000
+    feishu: 30000
+    bark: 4000
+    slack: 4000
+  batch_send_interval: 3
+  feishu_message_separator: "━━━━━━━━━━━━━━━━"

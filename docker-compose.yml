@@ -1,0 +1,40 @@
+name: aiyx-data-inteli-standalone
+
+services:
+  backend:
+    container_name: aiyx-data-inteli-backend
+    image: aiyx-data-inteli-backend:standalone
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    command: python -m ayx_growth_intel.api.main --config config/sources.yaml --host 0.0.0.0 --port 8088
+    environment:
+      AYX_CONFIG: config/sources.yaml
+      AYX_HOTLIST_ARCHIVE: /app/legacy/news
+      PYTHONPATH: /app/backend
+    env_file:
+      - ./config/.env
+    ports:
+      - "18088:8088"
+    volumes:
+      - aiyx_data_inteli_data:/app/data
+      - ./config:/app/config
+      - D:/Docker/202606100809-ayx-growth-intel/output/news:/app/legacy/news:ro
+    restart: unless-stopped
+
+  frontend:
+    container_name: aiyx-data-inteli-frontend
+    image: aiyx-data-inteli-frontend:standalone
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_BASE: http://127.0.0.1:18088
+    ports:
+      - "15179:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  aiyx_data_inteli_data:

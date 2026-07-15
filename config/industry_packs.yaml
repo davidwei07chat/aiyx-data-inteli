@@ -1,0 +1,61 @@
+# AYX Growth Intel 行业分析包
+# 用途：为 AI 分析和人工配置提供行业语义边界，MVP 先聚焦大消费。
+
+product:
+  name: "AYX Growth Intel"
+  positioning: "大消费品牌竞品舆情与增长机会雷达"
+  version: "0.1.0"
+
+industries:
+  beauty_skincare:
+    name: "美妆护肤"
+    core_questions:
+      - "哪些成分、功效、价格带正在升温或降温？"
+      - "竞品新品、达人种草、用户拔草之间是否出现温差？"
+      - "负面舆情是单点售后问题，还是成分、功效、信任危机？"
+    decision_scenarios:
+      - "新品概念验证"
+      - "竞品战情周报"
+      - "品牌公关预警"
+      - "达人投放复盘"
+
+  food_beverage:
+    name: "食品饮料"
+    core_questions:
+      - "健康化、无糖、高蛋白等需求是否形成真实购买动机？"
+      - "新品热度来自渠道铺货、内容营销，还是真实口碑扩散？"
+      - "价格战、渠道下沉、即时零售是否改变竞争格局？"
+    decision_scenarios:
+      - "新品口味和卖点发现"
+      - "大促期间竞品追踪"
+      - "渠道策略评估"
+      - "食品安全与口碑风险识别"
+
+  pet_consumer:
+    name: "宠物消费"
+    core_questions:
+      - "宠物主对成分、营养、安全、服务的核心焦虑是什么？"
+      - "国产与进口品牌的信任差距如何变化？"
+      - "智能硬件、医疗、保险、服务是否出现可商业化机会？"
+    decision_scenarios:
+      - "品类机会扫描"
+      - "品牌口碑追踪"
+      - "新品卖点验证"
+      - "高客单服务机会分析"
+
+analysis_modules:
+  - id: competitor_brief
+    name: "竞品战情"
+    output_focus: "品牌、品类、渠道、价格、营销动作的变化"
+  - id: opinion_development
+    name: "舆情发展"
+    output_focus: "热度轨迹、平台温差、扩散阶段、事件生命周期"
+  - id: consumer_attitude
+    name: "消费者态度"
+    output_focus: "购买动机、顾虑、情绪、阻力、口碑证据"
+  - id: pros_cons
+    name: "利弊分析"
+    output_focus: "对品牌方、渠道方、营销团队的机会与风险"
+  - id: growth_opportunity
+    name: "增长机会"
+    output_focus: "新品方向、内容选题、渠道动作、公关动作"

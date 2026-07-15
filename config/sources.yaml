@@ -1,0 +1,408 @@
+app:
+  database_path: data/ayx_growth_intel.db
+  request_interval_seconds: 2
+web_intel:
+  endpoint: http://localhost:11235
+social_intel:
+  import_dir: data/social-intel
+ai_report:
+  enabled: true
+  api_base: https://vcrppsmofoyv.cloud.sealos.io/v1
+  api_key: ''
+  model: glm-5
+  timeout: 180
+report_defaults:
+  keywords:
+  - 品牌
+  - 产品
+  - 竞品
+  - 用户反馈
+  - 消费
+  - 市场
+  core_terms:
+  - 投诉
+  - 维权
+  - 故障
+  - 召回
+  - 涨价
+  - 差评
+  - 监管
+  - 风险
+  industries:
+  - name: 消费零售
+    keywords:
+    - 消费
+    - 零售
+    - 品牌
+    - 价格
+    - 渠道
+    - 新消费
+    - 食品饮料
+    core_terms:
+    - 投诉
+    - 涨价
+    - 降价
+    - 差评
+    - 预制菜
+    - 食安
+    - 推荐
+  - name: 新能源汽车
+    keywords:
+    - 新能源
+    - 汽车
+    - 电池
+    - 充电
+    - 智能驾驶
+    - 车企
+    core_terms:
+    - 召回
+    - 故障
+    - 维权
+    - 续航
+    - 安全
+    - 事故
+  - name: 人工智能
+    keywords:
+    - AI
+    - 人工智能
+    - 大模型
+    - 智能体
+    - 算力
+    - AIGC
+    core_terms:
+    - 发布
+    - 融资
+    - 监管
+    - 竞品
+    - 风险
+    - 安全
+  - name: 财经与资本
+    keywords:
+    - 融资
+    - IPO
+    - 投资
+    - 资本
+    - 财经
+    - 消费投资
+    core_terms:
+    - 减持
+    - 亏损
+    - 监管
+    - 退市
+    - 并购
+    - 增长
+  - name: 本地生活
+    keywords:
+    - 餐饮
+    - 零售
+    - 上海
+    - 本地生活
+    - 服务
+    - 门店
+    core_terms:
+    - 闭店
+    - 投诉
+    - 涨价
+    - 食安
+    - 促销
+    - 体验
+sources:
+- id: toutiao
+  name: 今日头条
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: baidu
+  name: 百度热搜
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: wallstreetcn-hot
+  name: 华尔街见闻
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 财经
+  max_items: 50
+  enabled: true
+- id: thepaper
+  name: 澎湃新闻
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: bilibili-hot-search
+  name: bilibili 热搜
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 文旅
+  max_items: 50
+  enabled: true
+- id: cls-hot
+  name: 财联社热门
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 财经
+  max_items: 50
+  enabled: true
+- id: ifeng
+  name: 凤凰网
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: tieba
+  name: 贴吧
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: weibo
+  name: 微博
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: douyin
+  name: 抖音
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 文旅
+  max_items: 50
+  enabled: true
+- id: zhihu
+  name: 知乎
+  type: hotlist
+  platform: 热榜
+  url: ''
+  tags:
+  - 热榜
+  - 其他
+  max_items: 50
+  enabled: true
+- id: hacker-news
+  name: Hacker News
+  type: rss
+  platform: 科技
+  url: https://hnrss.org/frontpage
+  tags:
+  - RSS源
+  - 科技
+  max_items: 50
+  enabled: true
+- id: Hacker News Launches
+  name: Hacker News Launches
+  type: rss
+  platform: 科技
+  url: https://hnrss.org/launches
+  tags:
+  - RSS源
+  - 科技
+  max_items: 50
+  enabled: true
+- id: baiduhot
+  name: 百度实时热点
+  type: rss
+  platform: 其他
+  url: https://rsshub.rssforever.com/baidu/top/realtime
+  tags:
+  - RSS源
+  - 其他
+  max_items: 50
+  enabled: true
+- id: ftchinese
+  name: FT中文网 - 今日焦点
+  type: rss
+  platform: 财经
+  url: http://www.ftchinese.com/rss/news
+  tags:
+  - RSS源
+  - 财经
+  - 国际
+  max_items: 50
+  enabled: true
+- id: 36kr
+  name: 36氪
+  type: rss
+  platform: 财经
+  url: https://36kr.com/feed-newsflash
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: huxiu
+  name: 虎嗅
+  type: rss
+  platform: 科技
+  url: https://rss.huxiu.com/
+  tags:
+  - RSS源
+  - 科技
+  max_items: 50
+  enabled: true
+- id: gzh
+  name: 小绿文
+  type: rss
+  platform: 热榜
+  url: https://rsshub.rssforever.com/tophub/WnBe01o371
+  tags:
+  - RSS源
+  - 热榜
+  max_items: 50
+  enabled: true
+- id: eocnomist
+  name: 经济学人最新报道
+  type: rss
+  platform: 财经
+  url: https://economistnew.buzzing.cc/feed.xml
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: crazycapital
+  name: 疯投圈
+  type: rss
+  platform: 财经
+  url: https://crazy.capital/feed
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: shbendibao
+  name: 上海本地宝焦点资讯
+  type: rss
+  platform: 地区
+  url: https://rsshub.rssforever.com/bendibao/news/sh
+  tags:
+  - RSS源
+  - 地区
+  max_items: 50
+  enabled: true
+- id: chinaventurenews116
+  name: 投中网 新消费
+  type: rss
+  platform: 财经
+  url: https://rsshub.app/chinaventure/news/116
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: 36krrenqi
+  name: 36KR人气
+  type: rss
+  platform: 热榜
+  url: https://rsshub.rssforever.com/36kr/hot-list/renqi
+  tags:
+  - RSS源
+  - 热榜
+  max_items: 50
+  enabled: true
+- id: 36krlife
+  name: 36KR生活
+  type: rss
+  platform: 热榜
+  url: https://www.aiyxdatatest.cn/rsshub/36kr/information/happy_life
+  tags:
+  - RSS源
+  - 热榜
+  max_items: 50
+  enabled: true
+- id: caixinlatest
+  name: 财新最新文章
+  type: rss
+  platform: 财经
+  url: https://rsshub.rssforever.com/caixin/latest
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: 36krcontact
+  name: 36KR创投
+  type: rss
+  platform: 财经
+  url: https://www.aiyxdatatest.cn/rsshub/36kr/information/contact
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: 36krccs
+  name: 36kr财经
+  type: rss
+  platform: 财经
+  url: https://www.aiyxdatatest.cn/rsshub/36kr/information/ccs
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: cbndata2362
+  name: cbndata食品饮料
+  type: rss
+  platform: 热榜
+  url: https://www.aiyxdatatest.cn/rsshub/cbndata/information/2362?limit=50
+  tags:
+  - RSS源
+  - 热榜
+  max_items: 50
+  enabled: true
+- id: hongcan
+  name: 红餐网
+  type: rss
+  platform: 财经
+  url: https://www.aiyxdatatest.cn/rsshub/toutiao/user/token/CiZNLHx7bnpA1ymflvltxwD2kmKqZqiKwEI1jDb3Zl5jR5Bfbv4zXBpJCjwAAAAAAAAAAAAAUJFQhf5bsq_HHkupyZ8TX-Cy645IYF_G6RSfWnfqk29tC46lbIXacUb08YclwRnPPD4Q-uCUDhjDxYPqBCIBA5feaMU%3D/enhanced
+  tags:
+  - RSS源
+  - 财经
+  max_items: 50
+  enabled: true
+- id: social-intel-json
+  name: 本地社媒数据导入
+  type: social_intel
+  platform: 社媒
+  max_items: 100
+  enabled: false
+  tags:
+  - 其他

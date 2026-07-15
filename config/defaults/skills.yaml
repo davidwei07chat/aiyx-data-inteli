@@ -1,0 +1,16 @@
+enabled: true
+registry_dir: skills
+active:
+  - data-analysis
+  - brainstorming
+installed:
+  - id: data-analysis
+    name: Data Analysis
+    category: analysis
+    path: data-analysis/SKILL.md
+    enabled: true
+  - id: brainstorming
+    name: Brainstorming
+    category: ideation
+    path: brainstorming/SKILL.md
+    enabled: true
