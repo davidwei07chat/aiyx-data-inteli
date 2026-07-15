@@ -78,7 +78,7 @@ def load_config(path: str | Path) -> AppConfig:
     )
     return AppConfig(
         database_path=app.get("database_path", "data/ayx_growth_intel.db"),
-        web_intel_endpoint=web_intel.get("endpoint", "http://localhost:11235"),
+        web_intel_endpoint=os.environ.get("AYX_WEB_INTEL_ENDPOINT") or web_intel.get("endpoint", "http://localhost:11235"),
         social_import_dir=social_intel.get("import_dir", "data/social-intel"),
         request_interval_seconds=float(app.get("request_interval_seconds", 2.0)),
         ai_report_enabled=bool(ai_report.get("enabled", False)),

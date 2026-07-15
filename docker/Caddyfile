@@ -1,0 +1,15 @@
+﻿{$APP_DOMAIN} {
+    encode zstd gzip
+
+    basic_auth {
+        {$APP_ADMIN_USER} {$APP_ADMIN_PASSWORD_HASH}
+    }
+
+    handle_path /api/* {
+        reverse_proxy backend:8088
+    }
+
+    root * /srv
+    try_files {path} /index.html
+    file_server
+}
