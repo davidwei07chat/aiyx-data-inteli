@@ -1,0 +1,538 @@
+{
+  "name": "WeRSS Dify 重复文档安全清理工作流 v1",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1320, 120],
+      "id": "7f1b6a21-1001-4e5a-9b77-000000000001",
+      "name": "[C01] 手动触发"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-1320, 280],
+      "id": "7f1b6a21-1002-4e5a-9b77-000000000002",
+      "name": "[C02] 每小时触发"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "supabaseBaseUrl",
+              "name": "supabaseBaseUrl",
+              "value": "https://qydtqmgsdjlnjuwcpwbq.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "difyApiBaseUrl",
+              "name": "difyApiBaseUrl",
+              "value": "https://dify.aiyxtech.top/v1",
+              "type": "string"
+            },
+            {
+              "id": "cleanupBatchSize",
+              "name": "cleanupBatchSize",
+              "value": 20,
+              "type": "number"
+            },
+            {
+              "id": "cleanupEnabled",
+              "name": "cleanupEnabled",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "feishuWebhookUrl",
+              "name": "feishuWebhookUrl",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-1080, 200],
+      "id": "7f1b6a21-1003-4e5a-9b77-000000000003",
+      "name": "[C03] 清理配置",
+      "notes": "仅删除 Supabase 已判定 cleanup_ready=true 的重复/孤立 Dify 文档。工作流默认 inactive。"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "cleanup-enabled",
+              "leftValue": "={{ $json.cleanupEnabled === true }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-840, 200],
+      "id": "7f1b6a21-1004-4e5a-9b77-000000000004",
+      "name": "[C04] 是否启用清理"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('[C03] 清理配置').first().json.supabaseBaseUrl + '/rest/v1/kb_dify_document_cleanup_ready_view' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,record_type,group_key,canonical_record_key,canonical_document_id,duplicate_document_id,dataset_id,reason,status,attempt_count,metadata,cleanup_ready"
+            },
+            {
+              "name": "cleanup_ready",
+              "value": "eq.true"
+            },
+            {
+              "name": "order",
+              "value": "created_at.asc"
+            },
+            {
+              "name": "limit",
+              "value": "={{ $('[C03] 清理配置').first().json.cleanupBatchSize }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-600, 120],
+      "id": "7f1b6a21-1101-4e5a-9b77-000000000101",
+      "name": "[C05] 读取可安全清理任务",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out=[];\nfor(const item of $input.all()){\n  const value=item.json??{};\n  const rows=Array.isArray(value)?value:Array.isArray(value.body)?value.body:Array.isArray(value.data)?value.data:value.id?[value]:[];\n  for(const row of rows){\n    if(!row||typeof row!=='object')continue;\n    if(!row.id||!row.dataset_id||!row.duplicate_document_id||row.cleanup_ready!==true)continue;\n    out.push({json:row});\n  }\n}\nreturn out.length?out:[{json:{__empty:true}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-360, 120],
+      "id": "7f1b6a21-1102-4e5a-9b77-000000000102",
+      "name": "[C06] 展开清理任务"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-cleanup-task",
+              "leftValue": "={{ $json.__empty !== true && Number.isFinite(Number($json.id)) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-120, 120],
+      "id": "7f1b6a21-1103-4e5a-9b77-000000000103",
+      "name": "[C07] 是否有清理任务"
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ (() => { const base=String($('[C03] 清理配置').first().json.difyApiBaseUrl).replace(/\\/+$/,''); const api=base.endsWith('/v1')?base:base+'/v1'; return api + '/datasets/' + encodeURIComponent($json.dataset_id) + '/documents/' + encodeURIComponent($json.duplicate_document_id); })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000,
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1000
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [120, 40],
+      "id": "7f1b6a21-1104-4e5a-9b77-000000000104",
+      "name": "[C08] 删除Dify重复文档",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "w2v3bI55opvN5I4h",
+          "name": "DIFY Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const tasks=$('[C06] 展开清理任务').all().filter(i=>i.json?.__empty!==true);\nreturn $input.all().map((item,index)=>{\n  let task=tasks[index]?.json??{};\n  try{const matched=$('[C06] 展开清理任务').itemMatching(index);if(matched?.json?.id)task=matched.json}catch{}\n  const response=item.json??{};\n  const statusCode=Number(response.statusCode??response.status_code??response.error?.statusCode??0);\n  const success=[200,202,204,404].includes(statusCode);\n  const error=success?null:String(response.body?.message??response.error?.message??response.message??`Dify删除失败 HTTP ${statusCode||'unknown'}`).slice(0,1500);\n  return {json:{...task,status_code:statusCode,delete_success:success,error},pairedItem:{item:index}};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [360, 40],
+      "id": "7f1b6a21-1105-4e5a-9b77-000000000105",
+      "name": "[C09] 校验删除结果"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[C03] 清理配置').first().json.supabaseBaseUrl + '/rest/v1/rpc/mark_kb_dify_document_cleanup_result_v2' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {p_result:{cleanup_id:$json.id,status_code:$json.status_code,success:$json.delete_success,error:$json.error}} }}",
+        "options": {
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000,
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 300
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [600, 40],
+      "id": "7f1b6a21-1106-4e5a-9b77-000000000106",
+      "name": "[C10] 回写清理状态",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "let rows=[];\ntry{rows=$('[C09] 校验删除结果').all().map(i=>i.json??{})}catch{}\nreturn [{json:{cleanup_checked:rows.length,cleanup_deleted:rows.filter(r=>r.delete_success).length,cleanup_failed:rows.filter(r=>!r.delete_success).length}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [840, 40],
+      "id": "7f1b6a21-1107-4e5a-9b77-000000000107",
+      "name": "[C11] 汇总清理结果"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{cleanup_checked:0,cleanup_deleted:0,cleanup_failed:0}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [120, 200],
+      "id": "7f1b6a21-1108-4e5a-9b77-000000000108",
+      "name": "[C12] 无清理任务"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('[C03] 清理配置').first().json.supabaseBaseUrl + '/rest/v1/kb_workflow_state_snapshot_v4' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1080, 120],
+      "id": "7f1b6a21-1201-4e5a-9b77-000000000201",
+      "name": "[C13] 读取清理后状态快照",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "let summary={cleanup_checked:0,cleanup_deleted:0,cleanup_failed:0};\ntry{summary=$('[C11] 汇总清理结果').first().json}catch{try{summary=$('[C12] 无清理任务').first().json}catch{}}\nlet snapshot={};\nfor(const item of $input.all()){const j=item.json??{};if(Array.isArray(j)&&j[0]){snapshot=j[0];break}if(Array.isArray(j.body)&&j.body[0]){snapshot=j.body[0];break}if(j.article_total!==undefined){snapshot=j;break}}\nconst now=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date()).replace(/\\//g,'-');\nconst hasIssue=Number(summary.cleanup_failed||0)>0||Number(snapshot.dify_cleanup_review_count||0)>0;\nconst title=hasIssue?'⚠️ Dify重复文档清理完成（有异常）':'✅ Dify重复文档清理完成';\nconst text=`${title}\n\n工作流：${$workflow.name}\n执行 ID：${$execution.id}\n完成时间：${now}\n\n本轮检查：${Number(summary.cleanup_checked||0)} 个\n成功删除或原本不存在：${Number(summary.cleanup_deleted||0)} 个\n删除失败：${Number(summary.cleanup_failed||0)} 个\n\n待清理：${Number(snapshot.dify_cleanup_pending_count||0)} 个\n当前可安全清理：${Number(snapshot.dify_cleanup_ready_count||0)} 个\n累计已完成：${Number(snapshot.dify_cleanup_completed_count||0)} 个\n人工复核：${Number(snapshot.dify_cleanup_review_count||0)} 个\n\nDify待创建/更新：${Number(snapshot.dify_queue_count||0)} 个\nDify处理中：${Number(snapshot.dify_processing_count||0)} 个`;\nreturn [{json:{...summary,...snapshot,success:!hasIssue,feishu_text:text}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 120],
+      "id": "7f1b6a21-1202-4e5a-9b77-000000000202",
+      "name": "[C14] 生成清理汇报"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-feishu",
+              "leftValue": "={{ String($('[C03] 清理配置').first().json.feishuWebhookUrl || '').trim().length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1560, 120],
+      "id": "7f1b6a21-1203-4e5a-9b77-000000000203",
+      "name": "[C15] 是否发送飞书"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[C03] 清理配置').first().json.feishuWebhookUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {msg_type:'text',content:{text:$json.feishu_text}} }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [1800, 40],
+      "id": "7f1b6a21-1204-4e5a-9b77-000000000204",
+      "name": "[C16] 发送飞书汇报",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 200],
+      "id": "7f1b6a21-1205-4e5a-9b77-000000000205",
+      "name": "[C17] 完成"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{cleanup_checked:0,cleanup_deleted:0,cleanup_failed:0,cleanup_disabled:true}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-600, 320],
+      "id": "7f1b6a21-1206-4e5a-9b77-000000000206",
+      "name": "[C18] 清理已禁用"
+    }
+  ],
+  "connections": {
+    "[C01] 手动触发": {
+      "main": [[{"node":"[C03] 清理配置","type":"main","index":0}]]
+    },
+    "[C02] 每小时触发": {
+      "main": [[{"node":"[C03] 清理配置","type":"main","index":0}]]
+    },
+    "[C03] 清理配置": {
+      "main": [[{"node":"[C04] 是否启用清理","type":"main","index":0}]]
+    },
+    "[C04] 是否启用清理": {
+      "main": [
+        [{"node":"[C05] 读取可安全清理任务","type":"main","index":0}],
+        [{"node":"[C18] 清理已禁用","type":"main","index":0}]
+      ]
+    },
+    "[C05] 读取可安全清理任务": {
+      "main": [
+        [{"node":"[C06] 展开清理任务","type":"main","index":0}],
+        [{"node":"[C12] 无清理任务","type":"main","index":0}]
+      ]
+    },
+    "[C06] 展开清理任务": {
+      "main": [[{"node":"[C07] 是否有清理任务","type":"main","index":0}]]
+    },
+    "[C07] 是否有清理任务": {
+      "main": [
+        [{"node":"[C08] 删除Dify重复文档","type":"main","index":0}],
+        [{"node":"[C12] 无清理任务","type":"main","index":0}]
+      ]
+    },
+    "[C08] 删除Dify重复文档": {
+      "main": [[{"node":"[C09] 校验删除结果","type":"main","index":0}]]
+    },
+    "[C09] 校验删除结果": {
+      "main": [[{"node":"[C10] 回写清理状态","type":"main","index":0}]]
+    },
+    "[C10] 回写清理状态": {
+      "main": [[{"node":"[C11] 汇总清理结果","type":"main","index":0}]]
+    },
+    "[C11] 汇总清理结果": {
+      "main": [[{"node":"[C13] 读取清理后状态快照","type":"main","index":0}]]
+    },
+    "[C12] 无清理任务": {
+      "main": [[{"node":"[C13] 读取清理后状态快照","type":"main","index":0}]]
+    },
+    "[C18] 清理已禁用": {
+      "main": [[{"node":"[C13] 读取清理后状态快照","type":"main","index":0}]]
+    },
+    "[C13] 读取清理后状态快照": {
+      "main": [[{"node":"[C14] 生成清理汇报","type":"main","index":0}]]
+    },
+    "[C14] 生成清理汇报": {
+      "main": [[{"node":"[C15] 是否发送飞书","type":"main","index":0}]]
+    },
+    "[C15] 是否发送飞书": {
+      "main": [
+        [{"node":"[C16] 发送飞书汇报","type":"main","index":0}],
+        [{"node":"[C17] 完成","type":"main","index":0}]
+      ]
+    },
+    "[C16] 发送飞书汇报": {
+      "main": [[{"node":"[C17] 完成","type":"main","index":0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "versionId": "7f1b6a21-1999-4e5a-9b77-000000009999",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "cleanupVersion": "2026-07-28-v1",
+    "safeReadyView": "kb_dify_document_cleanup_ready_view",
+    "cleanupRpc": "mark_kb_dify_document_cleanup_result_v2",
+    "deleteEndpoint": "/datasets/{dataset_id}/documents/{document_id}",
+    "credentialNames": [
+      "Supabase Secret Key",
+      "DIFY Auth account"
+    ]
+  }
+}
