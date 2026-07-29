@@ -1,0 +1,48 @@
+name: Build WeRSS Main Workflow v8
+
+on:
+  push:
+    branches:
+      - chatgpt/werss-dify-r2-state-v3
+    paths:
+      - tools/build_werss_main_v8.py
+      - .github/workflows/build-werss-main-v8.yml
+      - n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json
+  pull_request:
+    paths:
+      - tools/build_werss_main_v8.py
+      - .github/workflows/build-werss-main-v8.yml
+      - n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build corrected workflows
+        run: python tools/build_werss_main_v8.py
+
+      - name: Validate import JSON
+        run: |
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v8_实际执行修复版.json" > /dev/null
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v8_画布粘贴版.json" > /dev/null
+
+      - name: Upload corrected workflows
+        uses: actions/upload-artifact@v4
+        with:
+          name: werss-main-workflow-v8
+          path: |
+            n8n/WeRSS_Dify_知识库自动化主工作流_v8_实际执行修复版.json
+            n8n/WeRSS_Dify_知识库自动化主工作流_v8_画布粘贴版.json
+            n8n/WeRSS_Dify_知识库自动化主工作流_v8_校验报告.json
+          if-no-files-found: error
