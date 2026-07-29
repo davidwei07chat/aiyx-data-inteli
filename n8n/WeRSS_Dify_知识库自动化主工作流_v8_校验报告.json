@@ -1,0 +1,9 @@
+{
+  "valid": true,
+  "node_count": 62,
+  "connection_source_count": 60,
+  "unique_node_names": true,
+  "missing_connection_targets": [],
+  "http_nodes_without_full_response": [],
+  "s3_binary_upload_configured": true
+}
