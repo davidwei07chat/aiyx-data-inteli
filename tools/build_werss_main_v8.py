@@ -9,6 +9,16 @@ CANVAS = Path("n8n/WeRSS_Dify_知识库自动化主工作流_v8_画布粘贴版.
 REPORT = Path("n8n/WeRSS_Dify_知识库自动化主工作流_v8_校验报告.json")
 
 
+def load_source() -> dict:
+    raw = SOURCE.read_text(encoding="utf-8-sig")
+
+    # 旧 v6 文件中有 3 处 JavaScript 单引号被写成 JSON 不允许的 \'。
+    # 对 JavaScript 字符串而言反斜杠不是必需的，移除后语义不变且 JSON 可解析。
+    raw = raw.replace("\\'", "'")
+
+    return json.loads(raw)
+
+
 def full_response(node: dict) -> None:
     params = node.setdefault("parameters", {})
     options = params.setdefault("options", {})
@@ -123,7 +133,7 @@ def validate(workflow: dict) -> dict:
 
 
 def main() -> None:
-    workflow = json.loads(SOURCE.read_text(encoding="utf-8"))
+    workflow = load_source()
     workflow["name"] = "WeRSS Dify 知识库自动化主工作流 v8 - 15篇批量实际执行修复版"
     workflow["active"] = False
     workflow.setdefault("settings", {})["executionOrder"] = "v1"
@@ -158,7 +168,6 @@ def main() -> None:
     s3_params["binaryData"] = True
     s3_params["binaryPropertyName"] = "data"
 
-    # 修复工作流说明，避免再次把它误认为状态巡检工作流。
     workflow["meta"] = {
         "workflowVersion": "2026-07-29-v8-main-runtime-fixed",
         "articleBatchSize": 15,
