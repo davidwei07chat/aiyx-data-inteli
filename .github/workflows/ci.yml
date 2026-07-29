@@ -9,10 +9,13 @@ permissions:
 
 jobs:
   repair-n8n-main-workflow:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Repair and validate n8n main workflow
         shell: bash
@@ -23,11 +26,13 @@ jobs:
           import uuid
 
           source = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json')
-          out_dir = Path('repaired-n8n-workflow')
-          out_dir.mkdir(exist_ok=True)
-          import_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json'
-          canvas_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json'
-          report_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
+          repo_out = Path('n8n')
+          artifact_out = Path('repaired-n8n-workflow')
+          artifact_out.mkdir(exist_ok=True)
+
+          import_name = 'WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json'
+          canvas_name = 'WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json'
+          report_name = 'WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
 
           raw = source.read_text(encoding='utf-8-sig')
           invalid_single_quote_escapes = raw.count("\\'")
@@ -129,9 +134,6 @@ jobs:
               for node_id in ids:
                   uuid.UUID(node_id)
 
-          import_out.write_text(import_text, encoding='utf-8', newline='\n')
-          canvas_out.write_text(canvas_text, encoding='utf-8', newline='\n')
-
           report = [
               'JSON_PARSE=PASS',
               'N8N_IMPORT_STRUCTURE=PASS',
@@ -147,9 +149,32 @@ jobs:
               'TOP_LEVEL_CUSTOM_META=REMOVED',
               'TOP_LEVEL_ACTIVE=REMOVED',
           ]
-          report_out.write_text('\n'.join(report) + '\n', encoding='utf-8', newline='\n')
-          print('\n'.join(report))
+          report_text = '\n'.join(report) + '\n'
+
+          for directory in (repo_out, artifact_out):
+              (directory / import_name).write_text(import_text, encoding='utf-8', newline='\n')
+              (directory / canvas_name).write_text(canvas_text, encoding='utf-8', newline='\n')
+              (directory / report_name).write_text(report_text, encoding='utf-8', newline='\n')
+
+          print(report_text)
           PY
+
+      - name: Commit repaired workflow files on branch push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json' \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json' \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
+          if git diff --cached --quiet; then
+            echo "No repaired workflow changes to commit"
+          else
+            git commit -m "fix(n8n): add validated v7 import and canvas workflow files"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
 
       - name: Upload repaired workflow files
         uses: actions/upload-artifact@v4
