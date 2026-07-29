@@ -1,10 +1,161 @@
-﻿name: CI
+name: CI
 
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  repair-n8n-main-workflow:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/werss-dify-r2-state-v3
+          fetch-depth: 0
+
+      - name: Repair and validate n8n workflow JSON
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import uuid
+
+          source = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json')
+          import_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json')
+          canvas_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json')
+          report_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt')
+
+          def escape_controls(text):
+              out=[]
+              in_string=False
+              escaped=False
+              for ch in text:
+                  if not in_string:
+                      out.append(ch)
+                      if ch=='"':
+                          in_string=True
+                          escaped=False
+                      continue
+                  if escaped:
+                      out.append(ch)
+                      escaped=False
+                      continue
+                  if ch=='\\':
+                      out.append(ch)
+                      escaped=True
+                      continue
+                  if ch=='"':
+                      out.append(ch)
+                      in_string=False
+                      continue
+                  if ch=='\n': out.append('\\n')
+                  elif ch=='\r': out.append('\\r')
+                  elif ch=='\t': out.append('\\t')
+                  elif ord(ch)<32: out.append(f'\\u{ord(ch):04x}')
+                  else: out.append(ch)
+              return ''.join(out)
+
+          raw=source.read_text(encoding='utf-8-sig')
+          repaired_controls=False
+          try:
+              workflow=json.loads(raw)
+          except json.JSONDecodeError:
+              workflow=json.loads(escape_controls(raw))
+              repaired_controls=True
+
+          nodes=workflow.get('nodes')
+          connections=workflow.get('connections')
+          if not isinstance(nodes,list) or not isinstance(connections,dict):
+              raise ValueError('Missing nodes array or connections object')
+
+          names=[str(n.get('name','')).strip() for n in nodes]
+          if any(not n for n in names) or len(names)!=len(set(names)):
+              raise ValueError('Node names must be non-empty and unique')
+          name_set=set(names)
+          for source_name, types in connections.items():
+              if source_name not in name_set:
+                  raise ValueError(f'Missing source node: {source_name}')
+              for groups in types.values():
+                  for group in groups:
+                      for edge in group:
+                          if edge.get('node') not in name_set:
+                              raise ValueError(f"Missing target node: {edge.get('node')}")
+
+          allowed={'stopWorkflow','continueRegularOutput','continueErrorOutput'}
+          capped=0
+          for index,node in enumerate(nodes,1):
+              node['id']=str(uuid.uuid5(uuid.NAMESPACE_URL,f'aiyx-main-v7:{index}:{node["name"]}'))
+              if 'maxTries' in node:
+                  node['maxTries']=min(5,max(2,int(node['maxTries'])))
+              if 'waitBetweenTries' in node:
+                  old=int(node['waitBetweenTries'])
+                  new=min(5000,max(0,old))
+                  capped+=old!=new
+                  node['waitBetweenTries']=new
+              if node.get('onError') not in allowed:
+                  node.pop('onError',None)
+
+          import_obj={
+              'name':'WeRSS Dify 知识库自动化主工作流 v7 - 15篇批量部分成功续跑导入修复版',
+              'nodes':nodes,
+              'connections':connections,
+              'settings':{'executionOrder':'v1'},
+              'pinData':{}
+          }
+          canvas_obj={'nodes':nodes,'connections':connections,'pinData':{}}
+
+          import_text=json.dumps(import_obj,ensure_ascii=False,indent=2)+'\n'
+          canvas_text=json.dumps(canvas_obj,ensure_ascii=False,separators=(',',':'))+'\n'
+          parsed_import=json.loads(import_text)
+          parsed_canvas=json.loads(canvas_text)
+          for parsed in (parsed_import,parsed_canvas):
+              ids=[n['id'] for n in parsed['nodes']]
+              if len(ids)!=len(set(ids)):
+                  raise ValueError('Duplicate node IDs')
+              for value in ids: uuid.UUID(value)
+
+          import_out.write_text(import_text,encoding='utf-8',newline='\n')
+          canvas_out.write_text(canvas_text,encoding='utf-8',newline='\n')
+          report=[
+              'JSON_PARSE=PASS',
+              'N8N_IMPORT_STRUCTURE=PASS',
+              'CANVAS_CLIPBOARD_STRUCTURE=PASS',
+              f'NODE_COUNT={len(nodes)}',
+              f'CONNECTION_SOURCE_COUNT={len(connections)}',
+              f'UUID_NODE_IDS={len(nodes)}',
+              f'REPAIRED_RAW_CONTROL_CHARACTERS={str(repaired_controls).lower()}',
+              f'CAPPED_RETRY_WAITS={capped}',
+              'ENCODING=UTF-8_WITHOUT_BOM',
+              'CUSTOM_TOP_LEVEL_META=REMOVED',
+              'TOP_LEVEL_ACTIVE=REMOVED'
+          ]
+          report_out.write_text('\n'.join(report)+'\n',encoding='utf-8',newline='\n')
+          print('\n'.join(report))
+          PY
+
+      - name: Commit repaired workflow to feature branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json' \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json' \
+            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "fix(n8n): add validated v7 workflow import files"
+            git push origin HEAD:chatgpt/werss-dify-r2-state-v3
+          fi
+
   verify:
     runs-on: ubuntu-latest
     steps:
