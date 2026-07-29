@@ -1,0 +1,684 @@
+{
+  "name": "WeRSS Dify R2 状态一致性检查与修复 v8 - 可复制到画板完整版",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-4720, 192],
+      "id": "v8-s01",
+      "name": "[S01] 手动触发"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [-4720, 352],
+      "id": "v8-s02",
+      "name": "[S02] 每10分钟触发"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "supabaseBaseUrl",
+              "name": "supabaseBaseUrl",
+              "value": "https://qydtqmgsdjlnjuwcpwbq.supabase.co",
+              "type": "string"
+            },
+            {
+              "id": "difyApiBaseUrl",
+              "name": "difyApiBaseUrl",
+              "value": "https://dify.aiyxtech.top/v1",
+              "type": "string"
+            },
+            {
+              "id": "difyClaimLimit",
+              "name": "difyClaimLimit",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "r2ClaimLimit",
+              "name": "r2ClaimLimit",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "lockMinutes",
+              "name": "lockMinutes",
+              "value": 15,
+              "type": "number"
+            },
+            {
+              "id": "r2RecheckHours",
+              "name": "r2RecheckHours",
+              "value": 24,
+              "type": "number"
+            },
+            {
+              "id": "feishuWebhookUrl",
+              "name": "feishuWebhookUrl",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-4480, 272],
+      "id": "v8-s03",
+      "name": "[S03] 运行配置",
+      "notes": "首次手动测试保持 difyClaimLimit=5。确认 D04、D05、D06、D07 正常后再逐步扩大。"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.supabaseBaseUrl + '/rest/v1/rpc/claim_kb_dify_pending_jobs_v3' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ p_limit: $json.difyClaimLimit, p_worker: 'n8n-state-v8-' + $execution.id, p_lock_minutes: $json.lockMinutes }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-4240, 112],
+      "id": "v8-d01",
+      "name": "[D01] 原子领取Dify任务",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const output=[];for(const item of $input.all()){const value=item.json??{};let rows=[];if(Array.isArray(value))rows=value;else if(Array.isArray(value.body))rows=value.body;else if(Array.isArray(value.data))rows=value.data;else if(value.record_key)rows=[value];for(const row of rows){const valid=row?.record_key&&row?.dataset_id&&row?.document_id&&row?.batch_id;if(!valid)continue;output.push({json:{record_type:row.record_type,record_key:row.record_key,dataset_id:row.dataset_id,document_id:row.document_id,batch_id:row.batch_id,content_hash:row.content_hash??null,dify_status:row.dify_status??'processing',updated_at:row.updated_at??null,retry_count:Number(row.retry_count??0)}})}}if(!output.length)return[{json:{__empty:true,reason:'没有领取到有效的Dify状态检查任务'}}];return output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-4000, 112],
+      "id": "v8-d02",
+      "name": "[D02] 展开Dify任务"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-dify",
+              "leftValue": "={{ $json.__empty !== true && typeof $json.batch_id === 'string' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-3760, 112],
+      "id": "v8-d03",
+      "name": "[D03] 是否有Dify任务"
+    },
+    {
+      "parameters": {
+        "url": "={{ (() => { const base = String($('[S03] 运行配置').first().json.difyApiBaseUrl).replace(/\\/+$/, ''); const api = base.endsWith('/v1') ? base : base + '/v1'; return api + '/datasets/' + encodeURIComponent($json.dataset_id) + '/documents/' + encodeURIComponent($json.batch_id) + '/indexing-status'; })() }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 1400
+            }
+          },
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-3520, 32],
+      "id": "v8-d04",
+      "name": "[D04] 查询Dify索引状态",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "w2v3bI55opvN5I4h",
+          "name": "DIFY Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const jobs=$('[D02] 展开Dify任务').all().filter(i=>i.json?.__empty!==true);return $input.all().map((item,index)=>{let job=jobs[index]?.json??{};try{const matched=$('[D02] 展开Dify任务').itemMatching(index);if(matched?.json?.record_key)job=matched.json}catch{}const response=item.json??{};const hasStatusCode=response.statusCode!==undefined||response.status_code!==undefined||response.error?.statusCode!==undefined;const statusCode=hasStatusCode?Number(response.statusCode??response.status_code??response.error?.statusCode):200;const body=response.body??response.data?.body??response;let documents=[];if(Array.isArray(body?.data))documents=body.data;else if(Array.isArray(body?.documents))documents=body.documents;else if(Array.isArray(body?.data?.documents))documents=body.data.documents;const states=documents.map(d=>String(d?.indexing_status??d?.status??'').toLowerCase()).filter(Boolean);let indexingStatus='processing';let transportError=false;let errorMessage=null;const explicitRequestError=Boolean(response.error)||(hasStatusCode&&(statusCode<200||statusCode>=400));if(explicitRequestError){transportError=true;errorMessage=String(body?.message??body?.detail??response.error?.message??`Dify status HTTP ${statusCode||'unknown'}`).slice(0,1500)}else if(!states.length){transportError=true;errorMessage='Dify接口返回成功，但响应中没有识别到data[].indexing_status'}else if(states.some(s=>['error','failed','stopped'].includes(s))){indexingStatus='error';errorMessage=JSON.stringify(body).slice(0,1500)}else if(states.every(s=>s==='completed')){indexingStatus='completed'}return{json:{...job,indexing_status:indexingStatus,transport_error:transportError,error_message:errorMessage,raw_status_code:statusCode,raw_states:states,raw_document_count:documents.length},pairedItem:{item:index}}});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-3280, 32],
+      "id": "v8-d05",
+      "name": "[D05] 安全分类Dify状态"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[S03] 运行配置').first().json.supabaseBaseUrl + '/rest/v1/rpc/reconcile_kb_dify_indexing_status_v2' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ p_result: { record_type: $json.record_type, record_key: $json.record_key, document_id: $json.document_id, batch_id: $json.batch_id, indexing_status: $json.indexing_status, error: $json.error_message, transport_error: $json.transport_error } }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 300
+            }
+          },
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-3040, 32],
+      "id": "v8-d06",
+      "name": "[D06] 回写Dify状态并释放锁",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const classified=$('[D05] 安全分类Dify状态').all().map(i=>i.json??{});const responses=$input.all();function parseMaybeJson(v){if(typeof v!=='string')return v;try{return JSON.parse(v)}catch{return v}}const writebacks=responses.map((item,index)=>{const response=item.json??{};const rawBody=response.body??response.data??response;const body=parseMaybeJson(rawBody);const rpcResult=body?.result??body;const hasStatusCode=response.statusCode!==undefined||response.status_code!==undefined||response.error?.status!==undefined||response.error?.statusCode!==undefined;const statusCode=hasStatusCode?Number(response.statusCode??response.status_code??response.error?.status??response.error?.statusCode):(rpcResult?.ok===true?200:0);const httpSuccess=statusCode>=200&&statusCode<300;const rpcSuccess=rpcResult?.ok===true&&Number(rpcResult?.updated_rows??0)>=1;const source=classified[index]??{};return{record_type:source.record_type??null,record_key:source.record_key??null,indexing_status:source.indexing_status??'unknown',transport_error:source.transport_error===true,status_code:statusCode,writeback_ok:httpSuccess&&rpcSuccess,dify_status:rpcResult?.dify_status??null,updated_rows:Number(rpcResult?.updated_rows??0),error:httpSuccess&&rpcSuccess?null:String(body?.message??body?.details??body?.hint??response.error?.message??`Supabase RPC writeback failed, HTTP ${statusCode||'unknown'}`).slice(0,1500)}});const ok=writebacks.filter(r=>r.writeback_ok);const bad=writebacks.filter(r=>!r.writeback_ok);return[{json:{dify_checked:classified.length,dify_completed:classified.filter(r=>r.indexing_status==='completed'&&!r.transport_error).length,dify_processing:classified.filter(r=>r.indexing_status==='processing'&&!r.transport_error).length,dify_index_failed:classified.filter(r=>r.indexing_status==='error'&&!r.transport_error).length,dify_transport_error:classified.filter(r=>r.transport_error).length,dify_writeback_success:ok.length,dify_writeback_failed:bad.length,synced_writeback_count:ok.filter(r=>r.dify_status==='synced').length,processing_writeback_count:ok.filter(r=>r.dify_status==='processing').length,failed_writeback_count:ok.filter(r=>r.dify_status==='failed').length,review_writeback_count:ok.filter(r=>r.dify_status==='review').length,writeback_errors:bad.slice(0,10)}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2800, 32],
+      "id": "v8-d07",
+      "name": "[D07] 汇总Dify"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{dify_checked:0,dify_completed:0,dify_processing:0,dify_index_failed:0,dify_transport_error:0,dify_writeback_success:0,dify_writeback_failed:0,synced_writeback_count:0,processing_writeback_count:0,failed_writeback_count:0,review_writeback_count:0,writeback_errors:[]}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-3520, 192],
+      "id": "v8-d08",
+      "name": "[D08] 无Dify任务"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[S03] 运行配置').first().json.supabaseBaseUrl + '/rest/v1/rpc/claim_wx_image_r2_verify_jobs_v2' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ p_limit: $('[S03] 运行配置').first().json.r2ClaimLimit, p_worker: 'n8n-state-v8-' + $execution.id, p_lock_minutes: $('[S03] 运行配置').first().json.lockMinutes, p_recheck_hours: $('[S03] 运行配置').first().json.r2RecheckHours }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-2560, 112],
+      "id": "v8-r01",
+      "name": "[R01] 原子领取R2任务",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out=[];for(const item of $input.all()){const value=item.json??{};const rows=Array.isArray(value)?value:Array.isArray(value.body)?value.body:Array.isArray(value.data)?value.data:value.image_md5?[value]:[];for(const row of rows){if(row?.image_md5&&row?.r2_url)out.push({json:row})}}return out.length?out:[{json:{__empty:true}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-2320, 112],
+      "id": "v8-r02",
+      "name": "[R02] 展开R2任务"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-r2",
+              "leftValue": "={{ $json.__empty !== true && typeof $json.r2_url === 'string' }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-2080, 112],
+      "id": "v8-r03",
+      "name": "[R03] 是否有R2任务"
+    },
+    {
+      "parameters": {
+        "method": "HEAD",
+        "url": "={{ $json.r2_url }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 500
+            }
+          },
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-1840, 32],
+      "id": "v8-r04",
+      "name": "[R04] HEAD验证R2",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const jobs=$('[R02] 展开R2任务').all().filter(i=>i.json?.__empty!==true);function hv(headers,name){if(!headers||typeof headers!=='object')return null;const key=Object.keys(headers).find(k=>k.toLowerCase()===name);const value=key?headers[key]:null;return Array.isArray(value)?value[0]:value}return $input.all().map((item,index)=>{let job=jobs[index]?.json??{};try{const matched=$('[R02] 展开R2任务').itemMatching(index);if(matched?.json?.image_md5)job=matched.json}catch{}const response=item.json??{};const code=Number(response.statusCode??response.status_code??response.error?.statusCode??0);const headers=response.headers??response.response?.headers??{};const verifyStatus=code>=200&&code<400?'verified':code===404?'missing':'error';const length=Number(hv(headers,'content-length'));return{json:{...job,verify_status:verifyStatus,error:verifyStatus==='verified'?null:verifyStatus==='missing'?'R2 object returned HTTP 404':String(response.error?.message??response.message??`HTTP ${code||'unknown'}`).slice(0,1500),content_length:Number.isFinite(length)?length:null,content_type:hv(headers,'content-type')},pairedItem:{item:index}}});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1600, 32],
+      "id": "v8-r05",
+      "name": "[R05] 整理R2结果"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[S03] 运行配置').first().json.supabaseBaseUrl + '/rest/v1/rpc/reconcile_wx_image_r2_status' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ p_result: { image_md5: $json.image_md5, verify_status: $json.verify_status, error: $json.error, content_length: $json.content_length, content_type: $json.content_type } }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 300
+            }
+          },
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-1360, 32],
+      "id": "v8-r06",
+      "name": "[R06] 回写R2状态并释放锁",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('[S03] 运行配置').first().json.supabaseBaseUrl + '/rest/v1/kb_workflow_execution_plan_v1' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-1120, 32],
+      "id": "v8-m01",
+      "name": "[M01] 读取执行计划",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "EHGWLbACqqukE94L",
+          "name": "Supabase Secret Key"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "let summary={};try{summary=$('[D07] 汇总Dify').first().json??{}}catch{try{summary=$('[D08] 无Dify任务').first().json??{}}catch{summary={}}}const d={dify_checked:Number(summary.dify_checked??0),dify_completed:Number(summary.dify_completed??0),dify_processing:Number(summary.dify_processing??0),dify_index_failed:Number(summary.dify_index_failed??0),dify_transport_error:Number(summary.dify_transport_error??0),dify_writeback_success:Number(summary.dify_writeback_success??0),dify_writeback_failed:Number(summary.dify_writeback_failed??0),synced_writeback_count:Number(summary.synced_writeback_count??0),processing_writeback_count:Number(summary.processing_writeback_count??0),failed_writeback_count:Number(summary.failed_writeback_count??0),review_writeback_count:Number(summary.review_writeback_count??0),writeback_errors:Array.isArray(summary.writeback_errors)?summary.writeback_errors:[]};let plan={};for(const item of $input.all()){const j=item.json??{};if(Array.isArray(j)&&j[0]){plan=j[0];break}if(Array.isArray(j.body)&&j.body[0]){plan=j.body[0];break}if(Array.isArray(j.data)&&j.data[0]){plan=j.data[0];break}if(j.recommended_action!==undefined||j.safe_to_run_main_workflow!==undefined){plan=j;break}}const p=plan??{};const now=new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date()).replace(/\\//g,'-');const hasFailure=d.dify_index_failed>0||d.dify_transport_error>0||d.dify_writeback_failed>0;const allWritebacksSuccessful=d.dify_checked>0&&d.dify_writeback_success===d.dify_checked&&d.dify_writeback_failed===0;const noTasks=d.dify_checked===0;let icon='✅';let runStatus='执行正常';if(hasFailure){icon='⚠️';runStatus='存在异常'}else if(noTasks){icon='ℹ️';runStatus='本轮没有待检查任务'}else if(!allWritebacksSuccessful){icon='⚠️';runStatus='回写数量不一致'}let errorText='';if(d.writeback_errors.length){errorText='\\n\\nSupabase回写错误明细：\\n'+d.writeback_errors.slice(0,5).map((e,i)=>`${i+1}. [${e.record_type??'unknown'}] ${e.record_key??'unknown'}\\n   HTTP：${e.status_code??0}\\n   错误：${e.error??'未知错误'}`).join('\\n')}const text=`${icon} 状态一致性 v8 执行完成\\n\\n执行状态：${runStatus}\\n执行时间：${now}\\n\\n【Dify状态检查】\\n领取检查：${d.dify_checked}\\n索引完成：${d.dify_completed}\\n仍在处理：${d.dify_processing}\\n真实索引失败：${d.dify_index_failed}\\n网络或HTTP异常：${d.dify_transport_error}\\n\\n【Supabase状态回写】\\n回写成功：${d.dify_writeback_success}\\n回写失败：${d.dify_writeback_failed}\\n写为synced：${d.synced_writeback_count}\\n保持processing：${d.processing_writeback_count}\\n写为failed：${d.failed_writeback_count}\\n写为review：${d.review_writeback_count}\\n\\n【当前系统状态】\\n文章总数：${Number(p.article_total??0)}\\n待处理文章：${Number(p.article_pending??0)}\\nDify待提交队列：${Number(p.dify_queue_count??0)}\\nDify processing：${Number(p.dify_processing_count??0)}\\nDify stale：${Number(p.dify_processing_stale_count??0)}\\nR2已验证：${Number(p.r2_verified_count??0)}\\nR2从未验证：${Number(p.r2_never_verified_count??0)}\\nR2缺失：${Number(p.r2_missing_count??0)}\\nR2错误：${Number(p.r2_error_count??0)}\\n\\n推荐动作：${p.recommended_action??'unknown'}\\n执行建议：${p.execution_instruction??p.recommended_action_detail??'暂无'}\\n主工作流门禁：${p.safe_to_run_main_workflow===true?'允许':'阻止'}${errorText}`;return[{json:{...summary,...p,report_generated_at:now,run_status:runStatus,has_dify_failure:hasFailure,all_writebacks_successful:allWritebacksSuccessful,no_dify_tasks:noTasks,feishu_text:text}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-880, 32],
+      "id": "v8-m02",
+      "name": "[M02] 生成汇报"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-feishu",
+              "leftValue": "={{ String($('[S03] 运行配置').first().json.feishuWebhookUrl || '').trim().length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [-640, 32],
+      "id": "v8-m03",
+      "name": "[M03] 是否发送飞书"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('[S03] 运行配置').first().json.feishuWebhookUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ msg_type: 'text', content: { text: $json.feishu_text } }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "includeResponseHeadersAndStatus": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [-400, -48],
+      "id": "v8-m04",
+      "name": "[M04] 发送飞书汇报",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 192],
+      "id": "v8-m05",
+      "name": "[M05] 完成"
+    }
+  ],
+  "connections": {
+    "[S01] 手动触发": {
+      "main": [[{"node":"[S03] 运行配置","type":"main","index":0}]]
+    },
+    "[S02] 每10分钟触发": {
+      "main": [[{"node":"[S03] 运行配置","type":"main","index":0}]]
+    },
+    "[S03] 运行配置": {
+      "main": [[{"node":"[D01] 原子领取Dify任务","type":"main","index":0}]]
+    },
+    "[D01] 原子领取Dify任务": {
+      "main": [[{"node":"[D02] 展开Dify任务","type":"main","index":0}]]
+    },
+    "[D02] 展开Dify任务": {
+      "main": [[{"node":"[D03] 是否有Dify任务","type":"main","index":0}]]
+    },
+    "[D03] 是否有Dify任务": {
+      "main": [
+        [{"node":"[D04] 查询Dify索引状态","type":"main","index":0}],
+        [{"node":"[D08] 无Dify任务","type":"main","index":0}]
+      ]
+    },
+    "[D04] 查询Dify索引状态": {
+      "main": [[{"node":"[D05] 安全分类Dify状态","type":"main","index":0}]]
+    },
+    "[D05] 安全分类Dify状态": {
+      "main": [[{"node":"[D06] 回写Dify状态并释放锁","type":"main","index":0}]]
+    },
+    "[D06] 回写Dify状态并释放锁": {
+      "main": [[{"node":"[D07] 汇总Dify","type":"main","index":0}]]
+    },
+    "[D07] 汇总Dify": {
+      "main": [[{"node":"[R01] 原子领取R2任务","type":"main","index":0}]]
+    },
+    "[D08] 无Dify任务": {
+      "main": [[{"node":"[R01] 原子领取R2任务","type":"main","index":0}]]
+    },
+    "[R01] 原子领取R2任务": {
+      "main": [[{"node":"[R02] 展开R2任务","type":"main","index":0}]]
+    },
+    "[R02] 展开R2任务": {
+      "main": [[{"node":"[R03] 是否有R2任务","type":"main","index":0}]]
+    },
+    "[R03] 是否有R2任务": {
+      "main": [
+        [{"node":"[R04] HEAD验证R2","type":"main","index":0}],
+        [{"node":"[M01] 读取执行计划","type":"main","index":0}]
+      ]
+    },
+    "[R04] HEAD验证R2": {
+      "main": [[{"node":"[R05] 整理R2结果","type":"main","index":0}]]
+    },
+    "[R05] 整理R2结果": {
+      "main": [[{"node":"[R06] 回写R2状态并释放锁","type":"main","index":0}]]
+    },
+    "[R06] 回写R2状态并释放锁": {
+      "main": [[{"node":"[M01] 读取执行计划","type":"main","index":0}]]
+    },
+    "[M01] 读取执行计划": {
+      "main": [[{"node":"[M02] 生成汇报","type":"main","index":0}]]
+    },
+    "[M02] 生成汇报": {
+      "main": [[{"node":"[M03] 是否发送飞书","type":"main","index":0}]]
+    },
+    "[M03] 是否发送飞书": {
+      "main": [
+        [{"node":"[M04] 发送飞书汇报","type":"main","index":0}],
+        [{"node":"[M05] 完成","type":"main","index":0}]
+      ]
+    },
+    "[M04] 发送飞书汇报": {
+      "main": [[{"node":"[M05] 完成","type":"main","index":0}]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "meta": {
+    "stateConsistencyVersion": "2026-07-29-v8-copy-ready",
+    "credentialNames": [
+      "Supabase Secret Key",
+      "DIFY Auth account"
+    ]
+  }
+}
