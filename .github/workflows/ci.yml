@@ -9,14 +9,10 @@ permissions:
 
 jobs:
   repair-n8n-main-workflow:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/chatgpt/werss-dify-r2-state-v3'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Repair and validate n8n main workflow
         shell: bash
@@ -27,53 +23,16 @@ jobs:
           import uuid
 
           source = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json')
-          import_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json')
-          canvas_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json')
-          report_out = Path('n8n/WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt')
-
-          def escape_unescaped_controls(text: str) -> str:
-              out = []
-              in_string = False
-              escaped = False
-              for ch in text:
-                  if not in_string:
-                      out.append(ch)
-                      if ch == '"':
-                          in_string = True
-                          escaped = False
-                      continue
-                  if escaped:
-                      out.append(ch)
-                      escaped = False
-                      continue
-                  if ch == '\\':
-                      out.append(ch)
-                      escaped = True
-                      continue
-                  if ch == '"':
-                      out.append(ch)
-                      in_string = False
-                      continue
-                  code = ord(ch)
-                  if ch == '\n':
-                      out.append('\\n')
-                  elif ch == '\r':
-                      out.append('\\r')
-                  elif ch == '\t':
-                      out.append('\\t')
-                  elif code < 0x20:
-                      out.append(f'\\u{code:04x}')
-                  else:
-                      out.append(ch)
-              return ''.join(out)
+          out_dir = Path('repaired-n8n-workflow')
+          out_dir.mkdir(exist_ok=True)
+          import_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json'
+          canvas_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json'
+          report_out = out_dir / 'WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
 
           raw = source.read_text(encoding='utf-8-sig')
-          repaired_controls = False
-          try:
-              workflow = json.loads(raw)
-          except json.JSONDecodeError:
-              workflow = json.loads(escape_unescaped_controls(raw))
-              repaired_controls = True
+          invalid_single_quote_escapes = raw.count("\\'")
+          raw = raw.replace("\\'", "'")
+          workflow = json.loads(raw)
 
           if not isinstance(workflow, dict):
               raise ValueError('Workflow root must be an object')
@@ -177,11 +136,11 @@ jobs:
               'JSON_PARSE=PASS',
               'N8N_IMPORT_STRUCTURE=PASS',
               'CANVAS_CLIPBOARD_STRUCTURE=PASS',
+              f'INVALID_SINGLE_QUOTE_ESCAPES_REPAIRED={invalid_single_quote_escapes}',
               f'NODE_COUNT={len(nodes)}',
               f'CONNECTION_SOURCE_COUNT={len(connections)}',
               f'UNIQUE_NODE_NAMES={len(set(names))}',
               f'UUID_NODE_IDS={len(nodes)}',
-              f'REPAIRED_RAW_CONTROL_CHARACTERS={str(repaired_controls).lower()}',
               f'NORMALIZED_NODE_IDS={normalized_ids}',
               f'CAPPED_RETRY_WAITS={capped_retry_waits}',
               'ENCODING=UTF-8_WITHOUT_BOM',
@@ -192,21 +151,13 @@ jobs:
           print('\n'.join(report))
           PY
 
-      - name: Commit repaired workflow files
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_n8n导入修复版.json' \
-            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_画布直接粘贴版.json' \
-            'n8n/WeRSS_Dify_知识库自动化主工作流_v7_校验报告.txt'
-          if git diff --cached --quiet; then
-            echo "No repaired workflow changes to commit"
-          else
-            git commit -m "fix(n8n): add validated v7 import and canvas workflow files"
-            git push origin HEAD:chatgpt/werss-dify-r2-state-v3
-          fi
+      - name: Upload repaired workflow files
+        uses: actions/upload-artifact@v4
+        with:
+          name: repaired-n8n-main-workflow-v7
+          path: repaired-n8n-workflow/
+          if-no-files-found: error
+          retention-days: 7
 
   verify:
     runs-on: ubuntu-latest
