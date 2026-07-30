@@ -37,6 +37,16 @@ jobs:
       - name: Build corrected workflows
         run: |
           python tools/build_werss_main_v8.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tools/build_werss_main_v9.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '"require(\'crypto\')" in image_code',
+              '"const crypto=require" in image_code',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
           python tools/build_werss_main_v9.py
 
       - name: Validate import JSON
