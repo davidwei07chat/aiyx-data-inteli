@@ -1,0 +1,15 @@
+{
+  "valid": true,
+  "workflow_name": "WeRSS Dify 知识库自动化主工作流 v9 - 图片二进制与MD5修复完整版",
+  "node_count": 64,
+  "connection_source_count": 62,
+  "unique_node_names": true,
+  "missing_connection_targets": [],
+  "http_nodes_without_full_response": [],
+  "crypto_node_type": "n8n-nodes-base.crypto",
+  "crypto_output_property": "image_md5",
+  "binary_restore_node_present": true,
+  "code32_uses_require_crypto": false,
+  "code32_returns_empty_sentinel": true,
+  "s3_binary_upload_configured": true
+}
