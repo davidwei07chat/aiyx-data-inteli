@@ -1,0 +1,88 @@
+name: Build WeRSS Main Workflow v8 and v9
+
+on:
+  push:
+    branches:
+      - chatgpt/werss-dify-r2-state-v3
+    paths:
+      - tools/build_werss_main_v8.py
+      - tools/build_werss_main_v9.py
+      - .github/workflows/build-werss-main-v8.yml
+      - n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json
+  pull_request:
+    paths:
+      - tools/build_werss_main_v8.py
+      - tools/build_werss_main_v9.py
+      - .github/workflows/build-werss-main-v8.yml
+      - n8n/WeRSS_Dify_知识库自动化主工作流_v6_15篇批量部分成功续跑完整版.json
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: chatgpt/werss-dify-r2-state-v3
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build corrected workflows
+        run: |
+          python tools/build_werss_main_v8.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tools/build_werss_main_v9.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              '"require(\'crypto\')" in image_code',
+              '"const crypto=require" in image_code',
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+          python tools/build_werss_main_v9.py
+
+      - name: Validate import JSON
+        run: |
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v8_实际执行修复版.json" > /dev/null
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v8_画布粘贴版.json" > /dev/null
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v9_图片二进制与MD5修复完整版.json" > /dev/null
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v9_画布直接粘贴版.json" > /dev/null
+          python -m json.tool "n8n/WeRSS_Dify_知识库自动化主工作流_v9_校验报告.json" > /dev/null
+
+      - name: Commit generated workflows
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v8_实际执行修复版.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v8_画布粘贴版.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v8_校验报告.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v9_图片二进制与MD5修复完整版.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v9_画布直接粘贴版.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v9_校验报告.json" \
+            "n8n/WeRSS_Dify_知识库自动化主工作流_v9_完整修复包.zip"
+          if git diff --cached --quiet; then
+            echo "No generated changes"
+          else
+            git commit -m "生成 WeRSS 主工作流 v9 图片二进制修复版 [skip ci]"
+            git push origin HEAD:chatgpt/werss-dify-r2-state-v3
+          fi
+
+      - name: Upload corrected workflows
+        uses: actions/upload-artifact@v4
+        with:
+          name: werss-main-workflow-v9
+          path: |
+            n8n/WeRSS_Dify_知识库自动化主工作流_v9_图片二进制与MD5修复完整版.json
+            n8n/WeRSS_Dify_知识库自动化主工作流_v9_画布直接粘贴版.json
+            n8n/WeRSS_Dify_知识库自动化主工作流_v9_校验报告.json
+            n8n/WeRSS_Dify_知识库自动化主工作流_v9_完整修复包.zip
+          if-no-files-found: error
